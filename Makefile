@@ -14,7 +14,7 @@ MODEL       := prism-ml/Bonsai-8B-mlx-1bit
 .PHONY: setup start stop status log test test-tools bench generate download clean
 
 setup: _install_uv _ensure_metal_toolchain _venv _deps download
-	@echo "\n[OK]  Setup complete. Run 'make start' to launch the server."
+	@echo "\n[OK] Setup complete. Run 'make start' to launch the server."
 
 _install_uv:
 	@if ! command -v $(UV) &>/dev/null; then \

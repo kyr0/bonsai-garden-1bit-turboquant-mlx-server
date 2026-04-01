@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # bench.sh - run 50 generation tasks with varying input and report tok/s
 set -euo pipefail
+export LC_NUMERIC=C
 
 BASE_URL="${BONSAI_URL:-http://127.0.0.1:8430}"
 MAX_TOKENS=128
