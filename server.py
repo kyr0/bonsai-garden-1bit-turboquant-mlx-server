@@ -1,6 +1,5 @@
 """OpenAI-compatible FastAPI server for bonsai - powered by mlx_lm."""
 
-import json
 import time
 import traceback
 import uuid

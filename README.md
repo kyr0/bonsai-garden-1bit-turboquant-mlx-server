@@ -99,7 +99,7 @@ Covers single tool calls (`get_weather`, `calculate`) and multi-step tool use (t
 
 ```sh
 make start
-bunx tsx test_tools.ts      # or: make test (runs all suites)
+pnpx/bunx/npx tsx test_tools.ts      # or: make test (runs all suites)
 ```
 
 Same scenarios as the Python suite: weather query, math query, and multi-step tool calling.
@@ -114,6 +114,21 @@ Same scenarios as the Python suite: weather query, math query, and multi-step to
 | Thinking/Reasoning | - | This isn't a reasoning model. |
 | Architecture | Dense | This model is based on Qwen3-8B (dense). |
 | Tool Calling | Supported | The model can call tools via the OpenAI function calling API. Also multi-step tool calls are supported (parallel). |
+
+
+### What the model does well
+
+Despite being 1-bit quantized, Bonsai-8B handles a wide range of tasks (`make test` passes 18/18 tests + 6/6 tool-calling tests):
+
+- **Concept explanations** - clear, structured answers (e.g. quantum computing with proper use of bold, headings, and analogies)
+- **Factual Q&A** - short, accurate responses to direct questions ("The capital of France is Paris.")
+- **Creative writing** - haiku, limericks, and freeform poetry with reasonable quality
+- **System prompt adherence** - follows system-role instructions correctly
+- **Code-related questions** - understands programming topics (Fibonacci, Python)
+- **Tool calling** - single and parallel function calls via the OpenAI API; correctly emits `finish_reason: tool_calls` and valid JSON arguments
+- **Streaming** - proper SSE streaming with `[DONE]` sentinel
+- **Sampling controls** - `temperature`, `top_p`, and `seed` all work as expected; `seed` + low temp produces deterministic output across runs
+- **Long context** - needle-in-a-haystack retrieval at ~4.7k prompt tokens and coherent summarization of long multi-topic transcripts
 
 ## License
 

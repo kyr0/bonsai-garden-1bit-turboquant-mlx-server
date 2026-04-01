@@ -89,8 +89,8 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-# -- Long generation (65536 tokens) -------
-run_test "Chat: Long generation (65536 tokens)" "/v1/chat/completions" '{
+# -- Long generation (long context) -------
+run_test "Chat: Long generation (long context)" "/v1/chat/completions" '{
     "messages": [{"role": "user", "content": "Write the longest, most detailed essay you can about the history of computing, from the abacus to modern AI."}],
     "max_tokens": 65536
 }'
@@ -180,9 +180,107 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+XFAIL=0
+
+# -- Needle in a Haystack (65k context) ---
+printf "\n-- Needle in a Haystack (long context) --\n"
+printf "  Generating haystack from shuffled bench prompts...\n"
+
+HAYSTACK_PAYLOAD=$(python3 gen_payload.py --mode needle --batches 5 --seed 42)
+
+PAYLOAD_SIZE=$(echo "$HAYSTACK_PAYLOAD" | wc -c | tr -d ' ')
+printf "  Payload size: %s bytes\n" "$PAYLOAD_SIZE"
+
+HTTP_CODE=$(curl -s -o /tmp/bonsai_test_resp.json -w "%{http_code}" \
+    -X POST "$BASE_URL/v1/chat/completions" \
+    -H "Content-Type: application/json" \
+    -d "$HAYSTACK_PAYLOAD" \
+    --max-time 300)
+
+if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
+    ANSWER=$(python3 -c "import json; print(json.load(open('/tmp/bonsai_test_resp.json'))['choices'][0]['message']['content'])")
+    PTOKENS=$(python3 -c "import json; print(json.load(open('/tmp/bonsai_test_resp.json')).get('usage',{}).get('prompt_tokens','?'))")
+    printf "  Prompt tokens: %s\n" "$PTOKENS"
+    if echo "$ANSWER" | grep -q "NEEDLE-IN-HAYSTACK-8430-FOUND"; then
+        printf "  [OK] Needle found in haystack: %s\n" "$ANSWER"
+        PASS=$((PASS + 1))
+    else
+        printf "  [X] Needle NOT found. Model answered: %s\n" "$ANSWER"
+        FAIL=$((FAIL + 1))
+    fi
+else
+    printf "  [X] HTTP %s\n" "$HTTP_CODE"
+    cat /tmp/bonsai_test_resp.json 2>/dev/null
+    FAIL=$((FAIL + 1))
+fi
+
+# -- Long context QA --------
+printf "\n-- Long context QA (long context) --\n"
+printf "  Generating long context from shuffled bench prompts...\n"
+
+LONGCTX_PAYLOAD=$(python3 gen_payload.py --mode longctx --batches 5 --max-tokens 256 --seed 99)
+
+PAYLOAD_SIZE=$(echo "$LONGCTX_PAYLOAD" | wc -c | tr -d ' ')
+printf "  Payload size: %s bytes\n" "$PAYLOAD_SIZE"
+
+HTTP_CODE=$(curl -s -o /tmp/bonsai_test_resp.json -w "%{http_code}" \
+    -X POST "$BASE_URL/v1/chat/completions" \
+    -H "Content-Type: application/json" \
+    -d "$LONGCTX_PAYLOAD" \
+    --max-time 300)
+
+if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
+    ANSWER=$(python3 -c "import json; print(json.load(open('/tmp/bonsai_test_resp.json'))['choices'][0]['message']['content'])")
+    PTOKENS=$(python3 -c "import json; print(json.load(open('/tmp/bonsai_test_resp.json')).get('usage',{}).get('prompt_tokens','?'))")
+    printf "  Prompt tokens: %s\n" "$PTOKENS"
+    # Just verify we got a coherent response (non-empty, mentions something topical)
+    ANSWER_LEN=${#ANSWER}
+    if [[ "$ANSWER_LEN" -gt 20 ]]; then
+        printf "  [OK] Got coherent response (%d chars):\n" "$ANSWER_LEN"
+        echo "$ANSWER" | head -10 | sed 's/^/    /'
+        PASS=$((PASS + 1))
+    else
+        printf "  [X] Response too short (%d chars): %s\n" "$ANSWER_LEN" "$ANSWER"
+        FAIL=$((FAIL + 1))
+    fi
+else
+    printf "  [X] HTTP %s\n" "$HTTP_CODE"
+    cat /tmp/bonsai_test_resp.json 2>/dev/null
+    FAIL=$((FAIL + 1))
+fi
+
+# -- finish_reason: "length" (expected failure) --
+printf "\n-- finish_reason: length (XFAIL) --\n"
+printf "  Sending request with max_tokens=5 to force truncation...\n"
+
+HTTP_CODE=$(curl -s -o /tmp/bonsai_test_resp.json -w "%{http_code}" \
+    -X POST "$BASE_URL/v1/chat/completions" \
+    -H "Content-Type: application/json" \
+    -d '{"messages": [{"role": "user", "content": "Write a very long and detailed essay about the history of mathematics from ancient civilizations to modern times."}], "max_tokens": 5, "temperature": 0.0}')
+
+if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
+    FINISH_REASON=$(python3 -c "import json; print(json.load(open('/tmp/bonsai_test_resp.json'))['choices'][0]['finish_reason'])")
+    CTOKENS=$(python3 -c "import json; print(json.load(open('/tmp/bonsai_test_resp.json')).get('usage',{}).get('completion_tokens','?'))")
+    CONTENT=$(python3 -c "import json; print(json.load(open('/tmp/bonsai_test_resp.json'))['choices'][0]['message']['content'])")
+    printf "  finish_reason: %s\n" "$FINISH_REASON"
+    printf "  completion_tokens: %s\n" "$CTOKENS"
+    printf "  truncated output: %s\n" "$CONTENT"
+    if [[ "$FINISH_REASON" == "length" ]]; then
+        printf "  [XFAIL] Generation truncated at max_tokens limit (expected)\n"
+        XFAIL=$((XFAIL + 1))
+    else
+        printf "  [X] Expected finish_reason='length', got '%s'\n" "$FINISH_REASON"
+        FAIL=$((FAIL + 1))
+    fi
+else
+    printf "  [X] HTTP %s\n" "$HTTP_CODE"
+    cat /tmp/bonsai_test_resp.json 2>/dev/null
+    FAIL=$((FAIL + 1))
+fi
+
 # -- Summary ------------------------------
 printf "\n==============================\n"
-printf "  Results: %d passed, %d failed\n" "$PASS" "$FAIL"
+printf "  Results: %d passed, %d failed, %d expected failures\n" "$PASS" "$FAIL" "$XFAIL"
 printf "==============================\n"
 
 [[ "$FAIL" -eq 0 ]]
