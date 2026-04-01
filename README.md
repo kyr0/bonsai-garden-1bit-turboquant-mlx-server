@@ -1,8 +1,12 @@
 # Bonsai
 
-OpenAI-compatible LLM inference server running [**Bonsai-8B**](https://huggingface.co/prism-ml/Bonsai-8B-mlx-1bit) (1-bit quantized) on Apple Silicon via [MLX](https://github.com/ml-explore/mlx).
+OpenAI-compatible LLM inference server running [**Bonsai-8B**](https://huggingface.co/prism-ml/Bonsai-8B-mlx-1bit) (1-bit quantized, _based on Qwen3-8B_) on Apple Silicon via [MLX](https://github.com/ml-explore/mlx).
 
 Uses a [PrismML MLX fork](https://github.com/PrismML-Eng/mlx) for 1-bit quantization support. I also fixed some bugs and implemented custom features - this is not yet merged upstream. Feel free to take anything you need.
+
+> A Macbook Air M4 can run the model with good performance (see below) and handle a wide range of tasks, including tool calling and long-context retrieval:
+
+<img src="docs/bonsai_demo_aichat.gif" alt="Bonsai demo in aichat terminal UI" width="600"/>
 
 ## Requirements
 
@@ -17,6 +21,33 @@ make start   # launch server on localhost:8430
 make test    # run example queries
 make stop    # stop the server
 ```
+
+## Terminal UI (Chat)
+
+If you want to try the model out without writing code, you can use the built-in terminal UI (you may want to install [brew](https://brew.sh/) first):
+
+```sh
+# install aichat via brew
+brew install aichat
+
+# run aichat
+aichat --session
+```
+
+You will be prompted for providing a config. 
+Answer like this:
+
+```
+> No config file, create a new one? Yes
+> API Provider (required): openai-compatible
+> Provider Name (required): bonsai
+> API Base (required): http://localhost:8430/v1
+> API Key (optional): 
+? LLMs to include (required):  
+> [x] prism-ml/Bonsai-8B-mlx-1bit
+```
+
+You should see this:
 
 ## Commands
 
