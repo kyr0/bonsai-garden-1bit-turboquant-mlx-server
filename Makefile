@@ -11,7 +11,7 @@ HOST        := 127.0.0.1
 PORT        := 8430
 MODEL       := prism-ml/Bonsai-8B-mlx-1bit
 
-.PHONY: setup start stop status log test bench generate download clean
+.PHONY: setup start stop status log test test-tools bench generate download clean
 
 setup: _install_uv _ensure_metal_toolchain _venv _deps download
 	@echo "\n[OK]  Setup complete. Run 'make start' to launch the server."
@@ -109,6 +109,10 @@ log:
 
 test:
 	@bash test.sh
+	@echo "\n=> Running Python tool calling tests ..."
+	$(VENV)/bin/python test_tools.py
+	@echo "\n=> Running TypeScript tool calling tests ..."
+	bunx tsx test_tools.ts
 
 # -- bench ------------------------------------------------------------
 bench:

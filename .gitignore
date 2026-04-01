@@ -4,3 +4,7 @@ __pycache__
 *.log
 bonsai.log
 .bonsai.pid
+node_modules
+dist
+build
+*.pid
