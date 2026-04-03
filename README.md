@@ -14,6 +14,13 @@ Uses a [PrismML MLX fork](https://github.com/PrismML-Eng/mlx) for 1-bit quantiza
 - Xcode Metal Toolchain (`setup` installs it automatically)
 - Python 3.12
 
+## Assumptions
+
+- Average memory footprint: ~1.85 GB (model + KV cache)
+- Max. peak @ 65k tokens: up to 4 GB (model + KV cache + activations)
+
+=> Fits comfortably within 16 GB RAM with room for OS and other processes; fits densely within 8 GB RAM with ample headroom. macOS  memory management is efficiently using memory compression, so actual memory pressure is about 2x lower than raw numbers suggest.
+
 ## Quick start
 
 ```sh

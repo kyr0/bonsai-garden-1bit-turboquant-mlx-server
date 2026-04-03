@@ -60,6 +60,7 @@ start:
 			--model $(MODEL) \
 			--host $(HOST) --port $(PORT) \
 			--temp 0.5 --top-p 0.85 \
+			--max-tokens 65536 \
 			>> $(LOG_FILE) 2>&1 & \
 		echo $$! > $(PID_FILE); \
 		echo "=> Server PID: $$(cat $(PID_FILE))  (log: $(LOG_FILE))"; \
