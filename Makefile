@@ -10,6 +10,7 @@ LOG_FILE    := bonsai.log
 HOST        := 127.0.0.1
 PORT        := 8430
 MODEL       := prism-ml/Bonsai-8B-mlx-1bit
+DRAFT_MODEL := prism-ml/Bonsai-1.7B-mlx-1bit
 
 .PHONY: setup start stop status log test test-tools bench generate download clean
 
@@ -49,7 +50,9 @@ _deps:
 download:
 	@echo "=> Pre-downloading model $(MODEL) ..."
 	$(VENV)/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download('$(MODEL)')"
-	@echo "=> Model cached."
+	@echo "=> Pre-downloading draft model $(DRAFT_MODEL) ..."
+	$(VENV)/bin/python -c "from huggingface_hub import snapshot_download; snapshot_download('$(DRAFT_MODEL)')"
+	@echo "=> Models cached."
 
 start:
 	@if [ -f "$(PID_FILE)" ] && kill -0 $$(cat $(PID_FILE)) 2>/dev/null; then \
@@ -58,6 +61,7 @@ start:
 		echo "=> Starting bonsai mlx_lm.server on $(HOST):$(PORT) ..."; \
 		$(VENV)/bin/python -m mlx_lm.server \
 			--model $(MODEL) \
+			--draft-model $(DRAFT_MODEL) \
 			--host $(HOST) --port $(PORT) \
 			--temp 0.5 --top-p 0.85 \
 			--max-tokens 65536 \

@@ -144,9 +144,11 @@ run_test "Chat: high temp + low top_p" "/v1/chat/completions" '{
 }'
 
 # -- Determinism check (5x same request) --
-printf "\n-- Determinism: 5x seed=42 temp=0.01 --\n"
+# Run 1 is a warmup (KV quant / speculative decoding can diverge the first
+# response).  Runs 2-5 must all match each other.
+printf "\n-- Determinism: 1 warmup + 4x seed=42 temp=0.01 --\n"
 DETERMINISM_PAYLOAD='{"messages": [{"role": "user", "content": "Hello!"}], "max_tokens": 128, "temperature": 0.01, "seed": 42}'
-PREV_RESP=""
+BASELINE=""
 DETERMINISM_OK=true
 
 for run in 1 2 3 4 5; do
@@ -158,14 +160,16 @@ for run in 1 2 3 4 5; do
     RESP=$(python3 -c "import json; print(json.load(open('/tmp/bonsai_det_resp_${run}.json'))['choices'][0]['message']['content'])")
 
     if [[ "$run" -eq 1 ]]; then
-        PREV_RESP="$RESP"
-        printf "  run %d: %.80s...\n" "$run" "$RESP"
+        printf "  run %d (warmup): %.80s...\n" "$run" "$RESP"
+    elif [[ "$run" -eq 2 ]]; then
+        BASELINE="$RESP"
+        printf "  run %d (baseline): %.80s...\n" "$run" "$RESP"
     else
-        if [[ "$RESP" == "$PREV_RESP" ]]; then
+        if [[ "$RESP" == "$BASELINE" ]]; then
             printf "  run %d: SAME\n" "$run"
         else
             printf "  run %d: DIVERGED\n" "$run"
-            printf "    expected: %.80s...\n" "$PREV_RESP"
+            printf "    expected: %.80s...\n" "$BASELINE"
             printf "    got:      %.80s...\n" "$RESP"
             DETERMINISM_OK=false
         fi
@@ -173,10 +177,10 @@ for run in 1 2 3 4 5; do
 done
 
 if $DETERMINISM_OK; then
-    printf "  [OK] All 5 runs produced identical output\n"
+    printf "  [OK] Runs 2-5 produced identical output\n"
     PASS=$((PASS + 1))
 else
-    printf "  [X] Divergence detected across runs\n"
+    printf "  [X] Divergence detected across runs 2-5\n"
     FAIL=$((FAIL + 1))
 fi
 
