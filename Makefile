@@ -43,9 +43,11 @@ _venv:
 
 _deps:
 	@echo "=> Installing Python dependencies ..."
-	$(UV) pip install --quiet mlx-lm
+	$(UV) pip install --quiet 'mlx-lm==0.31.1'
 	@echo "=> Installing PrismML MLX fork (1-bit quant + Metal space-path fix) ..."
 	$(UV) pip install --quiet ./mlx
+	@echo "=> Applying KV cache quantization patch to mlx_lm.server ..."
+	cd $$($(PYTHON) -c "import mlx_lm; print(mlx_lm.__path__[0])") && patch -p2 --forward < $(CURDIR)/patches/mlx_lm_kv_quant.patch || true
 
 download:
 	@echo "=> Pre-downloading model $(MODEL) ..."
@@ -65,6 +67,7 @@ start:
 			--host $(HOST) --port $(PORT) \
 			--temp 0.5 --top-p 0.85 \
 			--max-tokens 65536 \
+			--kv-bits 8 --kv-group-size 64 \
 			>> $(LOG_FILE) 2>&1 & \
 		echo $$! > $(PID_FILE); \
 		echo "=> Server PID: $$(cat $(PID_FILE))  (log: $(LOG_FILE))"; \
