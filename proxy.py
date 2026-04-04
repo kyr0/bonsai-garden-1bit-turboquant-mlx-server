@@ -332,6 +332,19 @@ class BackendManager:
             self._kill_backend(b)
         self.backends.clear()
 
+    # -- MLX memory polling ----------------------------------------
+
+    async def _poll_mlx_memory(self, backend: Backend) -> dict | None:
+        """Poll the backend's /debug/memory endpoint for MLX memory stats."""
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(f"{backend.url}/debug/memory", timeout=2)
+                if r.status_code == 200:
+                    return r.json()
+        except (httpx.ConnectError, httpx.TimeoutException, Exception):
+            pass
+        return None
+
     # -- watchdog loop ---------------------------------------------
 
     async def _watchdog_loop(self) -> None:
@@ -367,6 +380,20 @@ class BackendManager:
                         "baseline :%d = %s (%d samples)",
                         b.port, fmt_mb(b.baseline_kb), len(b._baseline_samples),
                     )
+
+            # -- MLX memory diagnostics ------------------------
+            mlx_mem = await self._poll_mlx_memory(b)
+            if mlx_mem:
+                log.info(
+                    "mem :%d  footprint=%s  active=%s  peak=%s  cache=%s  pcache=%s(%d)",
+                    b.port,
+                    fmt_mb(fp),
+                    f"{mlx_mem['active_mb']:.0f} MB",
+                    f"{mlx_mem['peak_mb']:.0f} MB",
+                    f"{mlx_mem['cache_mb']:.0f} MB",
+                    f"{mlx_mem['prompt_cache_mb']:.0f} MB",
+                    mlx_mem["prompt_cache_entries"],
+                )
 
         # -- idle unload (scale to 0) -------------------------
         if total_active == 0 and alive:
