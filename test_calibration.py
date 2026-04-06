@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Calibration test: sends prompts to the local server via curl and records timing stats."""
+"""Calibration test: sends prompts to the server and records timing stats."""
 
 import json
-import subprocess
 import time
 
-SERVER = "http://127.0.0.1:8430"
-ENDPOINT = f"{SERVER}/v1/chat/completions"
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
+
+client = OpenAI()
+MODEL = client.models.list().data[0].id
 
 PROMPTS = [
     "What is 2+2? Answer with just the number.",
@@ -22,33 +26,18 @@ PROMPTS = [
 results = []
 
 for i, prompt in enumerate(PROMPTS):
-    payload = {
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
-    }
-
-    body = json.dumps(payload)
     print(f"[{i}] Sending: {prompt[:60]}...")
 
     t0 = time.perf_counter()
-    proc = subprocess.run(
-        ["curl", "-s", "-X", "POST", ENDPOINT,
-         "-H", "Content-Type: application/json",
-         "-d", body],
-        capture_output=True, text=True, timeout=120,
+    resp = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
     )
     t1 = time.perf_counter()
 
-    if proc.returncode != 0:
-        print(f"    ✗ curl failed: {proc.stderr}")
-        continue
-
-    data = json.loads(proc.stdout)
-
-    choice = data["choices"][0]
-    content = choice["message"]["content"]
-    usage = data.get("usage", {})
-    completion_tokens = usage.get("completion_tokens", 0)
+    content = resp.choices[0].message.content
+    completion_tokens = resp.usage.completion_tokens if resp.usage else 0
 
     elapsed = round(t1 - t0, 2)
     tok_s = round(completion_tokens / elapsed, 1) if elapsed > 0 else 0

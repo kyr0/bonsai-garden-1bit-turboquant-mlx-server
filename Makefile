@@ -45,7 +45,7 @@ _venv:
 
 _deps:
 	@echo "=> Installing Python dependencies ..."
-	$(UV) pip install --quiet 'mlx-lm==0.31.1'
+	$(UV) pip install --quiet 'mlx-lm==0.31.1' openai python-dotenv
 	@echo "=> Installing PrismML MLX fork (1-bit quant + Metal space-path fix) ..."
 	$(UV) pip install --quiet ./mlx
 
@@ -146,15 +146,14 @@ log:
 	fi
 
 test:
-	@bash test.sh
-	@echo "\n=> Running Python tool calling tests ..."
+	@echo "=> Running integration tests ..."
+	$(VENV)/bin/python test.py
+	@echo "\n=> Running tool calling tests ..."
 	$(VENV)/bin/python test_tools.py
-	@echo "\n=> Running TypeScript tool calling tests ..."
-	bunx tsx test_tools.ts
 
 # -- bench ------------------------------------------------------------
 bench:
-	@bash bench.sh
+	@$(VENV)/bin/python bench.py
 
 # -- models -----------------------------------------------------------
 models:

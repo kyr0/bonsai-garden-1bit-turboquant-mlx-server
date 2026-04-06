@@ -16,9 +16,8 @@ It uses a [PrismML MLX fork](https://github.com/PrismML-Eng/mlx) for 1-bit quant
 
 ## Assumptions on Memory Usage and Performance
 
-- Average memory footprint: ~1.62 GB (models + initial KV cache, auto-grow)
+- Average memory footprint: ~1.58 GB (models + initial KV cache, auto-grow)
 - Max. peak @ 65k tokens: up to 4 GB (models + KV cache + activations)
-- 
 
 => Fits comfortably within 16 GB RAM with room for OS and other processes; fits densely within 8 GB RAM with ample headroom. macOS  memory management is efficiently using memory compression, so actual memory pressure is about 2x lower than raw numbers suggest.
 

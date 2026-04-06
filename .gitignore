@@ -9,3 +9,4 @@ dist
 build
 *.pid
 .vscode
+.env
