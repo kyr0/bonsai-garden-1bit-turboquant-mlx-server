@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Test tool calling via the OpenAI-compatible API with Pydantic schema validation."""
 import json
+import os
 import sys
 from typing import Literal, Optional
 
@@ -11,7 +12,9 @@ from pydantic import BaseModel, ValidationError
 load_dotenv()
 
 client = OpenAI()
-MODEL = client.models.list().data[0].id
+MODEL = os.environ.get("OPENAI_MODEL", "default_model")
+if MODEL == "default":
+    MODEL = "default_model"
 
 
 # -- Pydantic models for tool call argument validation ----------------

@@ -34,7 +34,7 @@ This server diverges from mlx-lm baseline by patching in / configuring:
   - **Auto-scale**: when all backends are busy and a new request arrives, a new backend is spawned on the next port. If memory allows. The `--max-mem-util` setting (default 80%) is a hard ceiling: after spawning, at least 20% of unified memory (including GPU) must remain free. This overrides `--max-backends` if the machine is memory-constrained.
   - **Auto-unload**: after `--idle-timeout` (default 300s) with zero active requests, all backends are killed and memory is freed. The proxy stays alive and accepts new connections; the next request triggers a cold-start (~2-3s), which is a great compromise for consumer workloads.
   - **Memory watchdog**: a background task samples baseline memory footprint per backend (using macOS `footprint` which includes Metal/GPU unified memory). When pressure is detected and the backend is idle >=30s, it first tries clearing the MLX buffer cache; if that's insufficient, it restarts the backend.
-  - **SSE streaming relay**: raw chunk pass-through via `httpx` async streaming.
+  - **SSE streaming relay**: raw chunk pass-through for ordinary streams, plus server-side MCP tool execution for streamed chat completions with an OpenAI-compatible SSE response.
 
 ## Quick start
 
@@ -179,6 +179,38 @@ Edit variables at the top of the `Makefile`:
 | `DRAFT_MODEL` | _(empty)_ | Draft model for speculative decoding (see below) |
 | `MAX_BACKENDS` | `2` | Maximum backend instances |
 | `MAX_MEM_UTIL` | `80` | Max memory utilisation % (must keep rest free) |
+
+### MCP Tool Discovery
+
+If you want the proxy to discover MCP tools automatically, point `MCP_CONFIG` at an `mcp.json` file before starting the server:
+
+```sh
+export MCP_CONFIG="$HOME/.aidana/mcp.json"
+make start
+```
+
+Example config:
+
+```json
+{
+  "mcpServers": {
+    "aidana": {
+      "transport": "streamable-http",
+      "timeout": 30,
+      "enabled": true,
+      "url": "http://127.0.0.1:3211/mcp"
+    }
+  }
+}
+```
+
+Behavior:
+
+- Enabled `streamable-http` MCP servers are discovered from `MCP_CONFIG`.
+- Their tools are injected into every `POST /v1/chat/completions` request.
+- For both non-streaming and streaming chat-completion requests, if the model emits only discovered MCP tool calls, the proxy executes those tools server-side and continues the conversation until it gets a final assistant answer.
+- Streamed MCP responses are returned as SSE events and still end with `data: [DONE]`; if the client requests `stream_options.include_usage`, the proxy also emits a final usage event.
+- If a response includes tool calls that do not belong to the discovered MCP registry, the proxy leaves the response unchanged so existing OpenAI-style client-side tool loops keep working.
 
 ### Speculative Decoding
 

@@ -45,7 +45,7 @@ _venv:
 
 _deps:
 	@echo "=> Installing Python dependencies ..."
-	$(UV) pip install --quiet 'mlx-lm==0.31.1' openai python-dotenv
+	$(UV) pip install --quiet 'mlx-lm==0.31.1' openai python-dotenv mcp
 	@echo "=> Installing PrismML MLX fork (1-bit quant + Metal space-path fix) ..."
 	$(UV) pip install --quiet ./mlx
 
@@ -150,6 +150,8 @@ test:
 	$(VENV)/bin/python test.py
 	@echo "\n=> Running tool calling tests ..."
 	$(VENV)/bin/python test_tools.py
+	@echo "\n=> Running MCP discovery tests ..."
+	$(VENV)/bin/python test_mcp.py
 	@echo "\n=> Running test calibration ..."
 	$(VENV)/bin/python test_calibration.py
 

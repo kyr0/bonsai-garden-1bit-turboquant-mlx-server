@@ -2,6 +2,7 @@
 """Calibration test: sends prompts to the server and records timing stats."""
 
 import json
+import os
 import time
 
 from dotenv import load_dotenv
@@ -10,7 +11,9 @@ from openai import OpenAI
 load_dotenv()
 
 client = OpenAI()
-MODEL = client.models.list().data[0].id
+MODEL = os.environ.get("OPENAI_MODEL", "default_model")
+if MODEL == "default":
+    MODEL = "default_model"
 
 PROMPTS = [
     "What is 2+2? Answer with just the number.",
